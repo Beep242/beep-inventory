@@ -220,6 +220,9 @@ BCORE.Inventory.config.SkinRollCost = 50000000000
 BCORE.Inventory.config.PricePerHpAndAp = 80
 
 
+BCORE.Inventory.config.AdminWipePassword = "YDWU*aw87e23e12789318hasdhjdaw"
+
+
 //////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////
@@ -326,7 +329,6 @@ function BCORE.Inventory:RegisterSuits(suits)
         local className = safeName(t.Name or k) .. "_suit"
         if not scripted_ents.Get(className) then
             scripted_ents.Register(ENT, className)
-            print("Registered suit: " .. className)
         end
     end
 end
@@ -341,7 +343,6 @@ end)
 
 BCORE.netstream.Hook("suit_ent", function(suits)
     BCORE.Inventory:RegisterSuits(suits)
-    print("Registered suits: " .. #suits)
     LocalPlayer():ConCommand("spawnmenu_reload")
 end)
 end

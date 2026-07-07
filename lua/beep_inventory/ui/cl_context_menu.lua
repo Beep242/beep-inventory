@@ -4,6 +4,7 @@ for i = 1, 45 do
     BUi:CreateFont("BCORE.Inventoryb." .. i, "Montserrat", i, 1024)
 end
 
+
 hook.Add("OnContextMenuOpen","[BCORE][INVENTORY[CONTEXTMENU]",function()
     if IsValid(BCORE.Inventory.Context) then 
         BCORE.Inventory.Context:SetVisible(true) 
@@ -33,6 +34,30 @@ hook.Add("OnContextMenuOpen","[BCORE][INVENTORY[CONTEXTMENU]",function()
             draw.RoundedBox(6, 1, 1, w - 2, h - 2, BCORE.Inventory.colors.sec)
             draw.SimpleText(BCORE.Inventory.upgradesbool and "Upgrades" or "Inventory", "BCORE.Inventorys.20", w/2, h/2, color_white, TEXT_ALIGN_CENTER,TEXT_ALIGN_CENTER)
         end)
+
+        BCORE.Inventory.Context.NavBar.MassDelete = BUi.Create("DButton", BCORE.Inventory.Context.NavBar)
+        BCORE.Inventory.Context.NavBar.MassDelete:Stick(RIGHT, 5)
+        BCORE.Inventory.Context.NavBar.MassDelete:SetWide(BCORE.Inventory.Context.NavBar:GetWide() * .2)
+        BCORE.Inventory.Context.NavBar.MassDelete:SetText("")
+        BCORE.Inventory.Context.NavBar.MassDelete:FadeHover(Color(BCORE.Inventory.colors.light.r, BCORE.Inventory.colors.light.g, BCORE.Inventory.colors.light.b, 90), 6, 8)
+        BCORE.Inventory.Context.NavBar.MassDelete:ClearPaint():Background(BCORE.Inventory.colors.light, 6):On("Paint", function(s, w, h)
+        draw.RoundedBox(6, 1, 1, w - 2, h - 2, BCORE.Inventory.colors.sec)
+
+        local col = (input.IsKeyDown(KEY_LSHIFT) or input.IsKeyDown(KEY_RSHIFT)) and Color(255, 0, 0) or color_white
+        draw.SimpleText("Mass Delete (Shift)", "BCORE.Inventorys.20", w / 2, h / 2, col, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+        end)
+
+        BCORE.Inventory.Context.NavBar.MassDelete.DoClick = function()
+            if not (input.IsKeyDown(KEY_LSHIFT) or input.IsKeyDown(KEY_RSHIFT)) then return end
+            local toDelete = {} 
+
+            for id, item in pairs(BCORE.Inventory.SelectedItems or {}) do
+                toDelete[id] = true
+            end
+
+            BCORE.netstream.Start("BCORE.Inventory.MassDelete", toDelete)
+            BCORE.Inventory.SelectedItems = {}
+        end
         
         BCORE.Inventory.Context.NavBar.nameLabel = BUi.Create("DLabel", BCORE.Inventory.Context.NavBar)
         BCORE.Inventory.Context.NavBar.nameLabel:SetText(BUi.Truncate(LocalPlayer():Nick(), 20) .. "'s Inventory")

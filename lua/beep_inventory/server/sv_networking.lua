@@ -42,6 +42,33 @@ thread.Hook("BCORE.Inventory.RequestAction", function(ply, itemID, action)
 
 end)
 
+thread.Hook("BCORE.Inventory.MassDelete", function(ply, deleteTbl)
+    if not istable(deleteTbl) then return end
+
+
+    local inventory = ply:GetInventory()
+    if not istable(inventory) then return end
+
+    local lookup = {}
+
+    for id, enabled in pairs(deleteTbl) do
+        if enabled then
+            lookup[id] = true
+        end
+    end
+
+    local snapshot = {}
+    for i, item in pairs(inventory) do
+        snapshot[i] = item
+    end
+
+    for _, item in pairs(snapshot) do
+        if item and item.id and lookup[item.id] then
+            ply:RemoveItem(item)
+        end
+    end
+end)
+
 function BCORE.Inventory:SyncSuit(ply)
     if not IsValid(ply) or not ply.currentsuit  then return end
     if ply.currentsuit == "none" then thread.Start(ply, "SuitSync", "none") return end

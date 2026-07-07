@@ -1,7 +1,6 @@
 AddCSLuaFile("shared.lua")
 include("shared.lua")
 
--- Initialize physics
 function ENT:Initialize()
     self:PhysicsInit(SOLID_VPHYSICS)
     self:SetMoveType(MOVETYPE_VPHYSICS)
@@ -16,7 +15,7 @@ local function formatPrintName(str)
 end
 
 
--- SpawnFunction for Q menu
+
 function ENT:SpawnFunction(ply, tr, ClassName)
     if not tr.Hit then return end
     local ent = ents.Create(ClassName)
@@ -64,14 +63,11 @@ function ENT:SpawnFunction(ply, tr, ClassName)
         )
         item:setActions({"Drop"})
 
-        -- Spawn the item in the world
         local spawnedSuit = item:SpawnItem(ply:GetPos() + Vector(0, 0, 20))
 
-        -- Attach the item to the spawned entity for PlayerUse
         spawnedSuit.isSuit = true
         spawnedSuit.itemData = item
 
-        -- Remove the temporary base entity
         ent:Remove()
     end)
 

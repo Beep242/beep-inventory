@@ -30,12 +30,10 @@ function ENT:SpawnFunction(ply, tr, ClassName)
 
     timer.Simple(0, function()
         if not IsValid(ent) then return end
-        --PrintTable(ent.customData)
         local rarity = "Common"
         local statsTable = {}
 
         local defaultStats = ent.customData and ent.customData.Stats or {}
-        PrintTable(defaultStats)
         for statName, statValues in pairs(defaultStats) do
             if type(statValues) == "table" then
                 local min = statValues[rarity].min or 1
@@ -45,7 +43,6 @@ function ENT:SpawnFunction(ply, tr, ClassName)
                 statsTable[statName] = statValues
             end
         end
-        PrintTable(statsTable)
         statsTable.Type = ent.PrintName or "Unknown"
         statsTable.Description = ent.customData and ent.customData.Description or "No description provided."
 
@@ -57,7 +54,7 @@ function ENT:SpawnFunction(ply, tr, ClassName)
             "Modifier",
             statsTable
         )
-        --PrintTable(item)
+
         item:setActions({"Drop"})
         item:SpawnItem(ply:GetPos() + Vector(0, 0, 20))
         ent:Remove()

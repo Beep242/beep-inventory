@@ -2,16 +2,16 @@ BCORE.netstream.Hook("SuitSync", function(suit)
     local ply = LocalPlayer()
 
     if suit == "none" then ply.currentsuit = "none" return end
-    print(suit)
+  
     ply.currentsuit = suit
-    print(("[DEBUG] Received suit sync for player %s"):format(ply:Nick()))
 
-    -- Initialize smoothed bars at max
+
+
     smoothHP = suit.customData.hp or 100
     smoothAP = suit.customData.ap or 0
 end)
 
--- Safe Lerp function
+
 local _Lerp = Lerp
 local function SafeLerp(frac, from, to)
     if type(frac) ~= "number" then frac = 0 end
@@ -20,7 +20,7 @@ local function SafeLerp(frac, from, to)
     return _Lerp(frac, from, to)
 end
 
--- Smoothed values for animation
+
 local smoothHP, smoothAP = nil, nil
 
 local function GetRarityColor(rarity)
@@ -32,10 +32,10 @@ local function GetRarityColor(rarity)
     end
 end
 
--- HUD
+
 local function StartHud()
     local ply = LocalPlayer()
-    if ply.currentsuit == "none" then return end  -- don't draw if no suit
+    if ply.currentsuit == "none" then return end
     local suit = ply.currentsuit
     local color = Color(26,72,145)
 
@@ -44,7 +44,7 @@ local function StartHud()
 
     local rotation = (CurTime() * 40) % 360
 
-    -- Main HUD background
+
     draw.RoundedBox(8, baseX, baseY, width, height, Color(46, 46, 46))
 
     

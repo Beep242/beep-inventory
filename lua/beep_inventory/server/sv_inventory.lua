@@ -47,7 +47,6 @@ end
 function PLAYER:SaveInventory()
     self:Initialize()
     BCORE.Inventory.DataBase:save(self)
-    print("Saving inventory : " .. self:Nick())
 end
 
 function PLAYER:GetInventory()

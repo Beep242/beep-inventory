@@ -13,7 +13,6 @@ end)
 hook.Add( "InitPostEntity", "some_unique_name", function()
     BCORE.Inventory.Admin:LoadAdminLogs()
     BCORE.Inventory.Admin:LoadActionLogs()
-    print("Loaded admin and action logs.")
 end )
 
 hook.Add("PlayerDisconnected", "BCORE_SavePlayerInventory", function(ply)
@@ -101,7 +100,6 @@ hook.Add("PlayerUse", "BCORE_CrouchPickup", function(ply, ent)
                 net.WriteString(weapon.customData.Skin)
                 net.Send(ply)
             end)
-            ply:ChatPrint("Applied skin to " .. weapon:GetClass())
         end
 
 

@@ -40,6 +40,9 @@ local function LoadInventoryFromFile()
 end
 
 thread.Hook("InventorySync", function(inventoryData)
+
+    if not inventoryData then return end 
+    
     local inventorySize = BCORE.Inventory.config.MaxSlots
     local modifierSize = BCORE.Inventory.config.MaxSlots
     local assignedSlots = {}
@@ -125,7 +128,6 @@ thread.Hook("InventorySync", function(inventoryData)
         end
     end
 
-    print("Inventory updated successfully")
 end)
 
 hook.Add("ShutDown", "BCORE_SaveAllInventories_CL", function()
@@ -138,14 +140,12 @@ end)
 
 gameevent.Listen("client_disconnect")
 hook.Add("client_disconnect", "BCORE_Save_CL", function(data)
-    print("Disconnected")
     SaveInventoryToFile()
 end)
 
 gameevent.Listen("player_activate")
 hook.Add("player_activate", "BCORE_LOAD_CL", function(ply)
     timer.Simple(7, function()
-        print("ACTIVATED")
         LocalPlayer().BCORE_Inventory = LocalPlayer().BCORE_Inventory or {}
         LocalPlayer().BCORE_Inventory_Modifiers = LocalPlayer().BCORE_Inventory_Modifiers or {}
 
@@ -165,8 +165,9 @@ hook.Add("player_activate", "BCORE_LOAD_CL", function(ply)
                 item.slot = inventoryById[item.id]
             end
         end
+        
 
-        for _, modifier in pairs(LocalPlayer().BCORE_Inventory_Modifiers) do
+        for _, modifier in pairs(LocalPlayer().BCORE_Inventory_Modifiers or {}) do
             if inventoryById[modifier.id] then
                 modifier.slot = inventoryById[modifier.id]
             end
