@@ -9,7 +9,7 @@ local function createTables()
     ]]
     local result = sql.Query(query)
     if result == false then
-        print("Error " .. (sql.LastError() or "Who the hell knows?"))
+        print("[Inventory] Failed to create bcore_inventories table: " .. (sql.LastError() or "unknown error"))
     end
 end
 
