@@ -661,23 +661,30 @@ end)
 
 thread.Hook("BCORE.Inventory.UnSocket", function(ply, itemID, modifier)
     if not IsValid(ply) then return end
+    if not istable(modifier) or modifier.id == nil then return end
 
     local item = ply:GetItemByID(itemID)
     if not item or not item.customData or not item.customData.Modifiers then return end
 
-    local removed = false
+    -- CRITICAL: the client only gets to say WHICH modifier to unsocket (by id) - the object
+    -- actually returned to the player's inventory must always be the server's own stored
+    -- copy. Previously this inserted the client-supplied `modifier` table directly, which is
+    -- fully attacker-controlled - a modified client could request unsocketing a real (cheap)
+    -- modifier by id while substituting an arbitrary fabricated table (any itemType, rarity,
+    -- or customData stats) in its place, a real item-forgery exploit.
+    local removedModifier
     for k, v in ipairs(item.customData.Modifiers) do
         if v.id == modifier.id then
+            removedModifier = v
             table.remove(item.customData.Modifiers, k)
-            removed = true
             break
         end
     end
 
-    if not removed then return end
+    if not removedModifier then return end
 
     local baseStats = item.customData.baseStats or {}
-    local modType   = modifier.customData and modifier.customData.Type
+    local modType   = removedModifier.customData and removedModifier.customData.Type
     local modData   = modType and BCORE.Inventory.Modifiers[modType]
 
     if modData and modData.stats then
@@ -692,9 +699,9 @@ thread.Hook("BCORE.Inventory.UnSocket", function(ply, itemID, modifier)
     item.customData.baseStats = baseStats
     ply:UpdateItem(item)
 
-    setmetatable(modifier, BCORE.Inventory.Item)
-    modifier:setActions(BCORE.Inventory.actiontable[modifier.itemType])
-    ply:AddItem(modifier)
+    setmetatable(removedModifier, BCORE.Inventory.Item)
+    removedModifier:setActions(BCORE.Inventory.actiontable[removedModifier.itemType])
+    ply:AddItem(removedModifier)
 
     BCORE.Inventory:Chat("Unsocketed modifier '" .. (modType or "unknown") .. "' from " .. item.name .. ".", ply)
 end)

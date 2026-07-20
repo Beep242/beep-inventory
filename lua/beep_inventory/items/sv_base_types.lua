@@ -37,4 +37,6 @@ entity.Destroy = function(item, ply)
     ply:RemoveItem(item)
 end
 
-Inventory:RegisterType("weapon",weapon)
+-- Was a redundant second Inventory:RegisterType("weapon", weapon) - the `entity` actions
+-- table above was fully defined but never actually registered under its own type at all.
+Inventory:RegisterType("entity", entity)

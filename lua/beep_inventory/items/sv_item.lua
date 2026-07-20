@@ -19,7 +19,10 @@ do
     end
 end
 
-function GenerateUniqueID()
+-- Namespaced under BCORE.Inventory rather than left as a bare global - it's called from
+-- sv_admin.lua too, so it can't be a plain `local function`, but a bare global name is real,
+-- avoidable pollution risk (collision with another addon or the game itself).
+function BCORE.Inventory.GenerateUniqueID()
     local success = sql.Query("INSERT INTO bcore_unique_ids DEFAULT VALUES")
 
     if success == false then
@@ -40,7 +43,7 @@ end
 
 function Item:new(className, name, model, rarity, itemType, customData)
     local obj = setmetatable({}, self)
-    obj.id = obj.id or GenerateUniqueID()
+    obj.id = obj.id or BCORE.Inventory.GenerateUniqueID()
     obj.className = className or "default"
     obj.name = name or "Unknown Item"
     obj.model = model or "models/props_junk/cardboard_box001a.mdl"

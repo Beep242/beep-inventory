@@ -14,7 +14,10 @@ function defaultRanges(baseMin, baseMax)
 end
 
 function BCORE.Inventory:EquipSuit(ply, item)
-    if ply.currentsuit and not ply.currentsuit == "none" then
+    -- Was `not ply.currentsuit == "none"`, which parses as (not ply.currentsuit) == "none" -
+    -- always false, since `not ply.currentsuit` is a boolean and can never equal a string.
+    -- The "already equipped" guard below never actually fired.
+    if ply.currentsuit and ply.currentsuit ~= "none" then
         BCORE.Inventory:Chat("You already have a suit equipped!", ply)
         return false
     end
@@ -138,26 +141,52 @@ suit.Socket = function(item, ply)
 
 end
 util.AddNetworkString("RepairSuit")
+
+-- Registered ONCE at file scope, never inside suit.Repair. The old version re-registered
+-- net.Receive("RepairSuit", ...) on every single repair request, closing over that call's own
+-- `item` local - since net.Receive only ever keeps the LAST-registered callback per message
+-- name (globally, not per-player), a second repair request from anyone before the first one's
+-- confirmation arrived would silently repair the WRONG item (even a different player's item)
+-- using whichever `item`/`ply` the most recent registration happened to capture. The client
+-- now echoes back the item id it was quoted a price for, so the server always looks the item
+-- up fresh via the real owning player rather than trusting a stale closure. This also fixes a
+-- second bug: no money was ever actually deducted here (unlike RollSkin, just above).
+net.Receive("RepairSuit", function(len, ply)
+    if not IsValid(ply) then return end
+    local itemID = net.ReadUInt(32)
+
+    local item = ply:GetItemByID and ply:GetItemByID(itemID)
+    if not item or not item.customData or item.customData.Type == nil then return end
+    if not BCORE.Inventory.Suits[item.customData.Type] then return end -- not actually a suit
+
+    local maxHP = item.customData.maxhp or 0
+    local maxAP = item.customData.maxap or 0
+    local currentHP = item:GetProperty("Health") or 0
+    local currentAP = item:GetProperty("Armor") or 0
+
+    if currentHP >= maxHP and currentAP >= maxAP then
+        BCORE.Inventory:Chat("Your " .. item.name .. " is already fully repaired!", ply)
+        return
+    end
+
+    local cost = (maxHP + maxAP) * BCORE.Inventory.config.PricePerHpAndAp
+    if not ply.getDarkRPVar or ply:getDarkRPVar("money") < cost then
+        BCORE.Inventory:Chat("You don't have enough money to repair your " .. item.name .. "! Cost: " .. cost, ply)
+        return
+    end
+
+    ply:addMoney(-cost)
+    item:SetProperty("Health", maxHP)
+    item:SetProperty("Armor", maxAP)
+    ply:UpdateItem(item)
+    BCORE.Inventory:Chat("Your " .. item.name .. " has been repaired!", ply)
+end)
+
 suit.Repair = function(item, ply)
     net.Start("RepairSuit")
     net.WriteFloat((item.customData.maxhp + item.customData.maxap) * BCORE.Inventory.config.PricePerHpAndAp)
+    net.WriteUInt(item.id, 32)
     net.Send(ply)
-
-    net.Receive("RepairSuit", function(len, ply)
-        local maxHP = item.customData.maxhp or 0
-        local maxAP = item.customData.maxap or 0
-        local currentHP = item:GetProperty("Health") or 0
-        local currentAP = item:GetProperty("Armor") or 0
-
-        if currentHP < maxHP or currentAP < maxAP then
-            item:SetProperty("Health", maxHP)
-            item:SetProperty("Armor", maxAP)
-            ply:UpdateItem(item)
-            BCORE.Inventory:Chat("Your " .. item.name .. " has been repaired!", ply)
-        else
-            BCORE.Inventory:Chat("Your " .. item.name .. " is already fully repaired!", ply)
-        end
-    end)
 end
 
 BCORE.Inventory:RegisterType("Suit", suit)

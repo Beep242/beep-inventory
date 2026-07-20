@@ -44,7 +44,9 @@ hook.Add("PlayerUse", "BCORE_CrouchPickup", function(ply, ent)
         return false
     end
         if ent.itemType == "Suit" then
-            if ply.currentsuit and not ply.currentsuit == "none" then
+            -- Same operator-precedence bug as EquipSuit's own guard - `not ply.currentsuit ==
+            -- "none"` is always false, so this check never actually blocked a pickup either.
+            if ply.currentsuit and ply.currentsuit ~= "none" then
                 BCORE.Inventory:Chat("You already have a suit equipped!", ply)
                 return false
         end

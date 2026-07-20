@@ -364,13 +364,15 @@ end
 
 net.Receive("RepairSuit", function()
         local price = net.ReadFloat()
+        local itemID = net.ReadUInt(32)
         local popup = BUi.Create("BUi.Popup")
-        popup:SetName("Repair Suit?") 
+        popup:SetName("Repair Suit?")
         popup:SetMode("yesno", {
         text = "Are you sure you would like to repair your suit for $ " .. price,
 
         yes = function()
             net.Start("RepairSuit")
+            net.WriteUInt(itemID, 32)
             net.SendToServer()
         end,
 

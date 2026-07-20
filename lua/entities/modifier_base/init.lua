@@ -35,7 +35,7 @@ function ENT:SpawnFunction(ply, tr, ClassName)
 
         local defaultStats = ent.customData and ent.customData.Stats or {}
         for statName, statValues in pairs(defaultStats) do
-            if type(statValues) == "table" then
+            if type(statValues) == "table" and statValues[rarity] then
                 local min = statValues[rarity].min or 1
                 local max = statValues[rarity].max or 10
                 statsTable[statName] = math.random(min, max)

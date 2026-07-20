@@ -10,6 +10,16 @@ local currentplayer   = nil
 local currentinventory = {}
 local itemTypes       = {}
 local currentMenu     = nil
+local adminlogs         = {} -- these four were missing `local` (global leaks)
+local filteredAdminLogs = {}
+local actionlogs         = {}
+local filteredActionLogs = {}
+-- Forward-declared: used inside a net hook callback (below) defined earlier in this file than
+-- its own `function OverrideRightClick(...)` definition further down - it has to be a local
+-- upvalue the earlier closure can see, not a global, but Lua's lexical scoping means the
+-- `local` itself must come before that closure. The real definition later in the file assigns
+-- into this same local instead of declaring a new one.
+local OverrideRightClick
 
 -- ─────────────────────────────────────────────
 -- NET HOOKS
@@ -272,7 +282,7 @@ end
 -- ─────────────────────────────────────────────
 -- RIGHT-CLICK CONTEXT MENU
 -- ─────────────────────────────────────────────
-function OverrideRightClick(panels)
+OverrideRightClick = function(panels)
     if not panels then return end
 
     for i = 1, BCORE.Inventory.config.MaxSlots do
@@ -564,16 +574,17 @@ function BCORE.Inventory:OpenPlayerInventory(steamid)
     wipe:SetText("")
     wipe:FadeHover(Color(100, 0, 0, 90), 6, 8)
     wipe:On("DoClick", function()
+        -- This is a client-side confirmation step only - real authorization is the separate
+        -- server-side IsAdmin check in sv_admin.lua, so a plain yes/no confirm is exactly as
+        -- safe as (and far less broken than) the old hardcoded "type this exact password" gate.
         local popup = BUi.Create("BUi.Popup")
-        popup:SetName("Enter Password")
-        popup:SetMode("textentry", {
-            placeholder = "Enter Password",
-            callback = function(txt)
-                if txt ~= "nigger" then
-                    chat.AddText("[InventoryAdmin] You must type the 'password' to wipe this player's inventory.", Color(255, 0, 0))
-                else
-                    BCORE.netstream.Start("BCORE.Inventory.Admin.RequestAction", steamid, "wipe", nil, nil)
-                end
+        popup:SetName("Confirm Wipe")
+        popup:SetMode("yesno", {
+            text = "Are you sure you want to wipe this player's entire inventory? This cannot be undone.",
+            yesText = "Wipe",
+            noText = "Cancel",
+            yes = function()
+                BCORE.netstream.Start("BCORE.Inventory.Admin.RequestAction", steamid, "wipe", nil, nil)
             end,
         })
     end)

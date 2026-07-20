@@ -36,6 +36,7 @@ thread.Hook("BCORE.Inventory.RequestAction", function(ply, itemID, action)
             else
                 ply:ChatPrint("This action is not available for this item.")
             end
+            break -- item ids are unique; keep iterating the rest of the inventory for no reason otherwise
         end
     end
 

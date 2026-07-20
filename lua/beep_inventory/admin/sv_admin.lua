@@ -152,7 +152,7 @@ end
 function Inventory:DuplicateItem(admin, targetSteamID64, itemTable)
     if not Inventory:IsAdmin(admin) then return false end
     local newItem = table.Copy(itemTable)
-    newItem.id = GenerateUniqueID()
+    newItem.id = BCORE.Inventory.GenerateUniqueID()
     setmetatable(newItem, BCORE.Inventory.Item)
     newItem:setActions(BCORE.Inventory.actiontable[newItem.itemType])
     return Inventory:GiveItem(admin, targetSteamID64, newItem), newItem

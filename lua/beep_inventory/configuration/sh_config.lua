@@ -212,15 +212,160 @@ BCORE.Inventory.colors = {
     moneygreen = Color(255,206,31),
     online = Color(0,82,224),
     current = Color(254,89,12),
-    playtime = Color(0,247,589),
+    playtime = Color(0,247,255), -- was Color(0,247,589) - 589 is out of the 0-255 range
 }
 
 BCORE.Inventory.config.SkinRollCost = 50000000000
 
 BCORE.Inventory.config.PricePerHpAndAp = 80
 
+-- AdminWipePassword used to be defined here but never actually referenced anywhere - the
+-- real client-side wipe-confirmation gate in cl_admin.lua hardcoded a different (and
+-- offensive) literal string instead of using it. That check is cosmetic client-side UX only
+-- (the real authorization is the separate server-side IsAdmin check in sv_admin.lua), so both
+-- the dead config value and the hardcoded literal have simply been removed - see cl_admin.lua.
 
-BCORE.Inventory.config.AdminWipePassword = "YDWU*aw87e23e12789318hasdhjdaw"
+-- Register with BCORE.Config (beep-framework), if present, so all of the above becomes
+-- in-game editable/persisted instead of needing a file edit + restart. Every
+-- BCORE.Inventory.* table stays exactly what every other file in this addon reads from
+-- directly - this block just keeps them synced from BCORE.Config underneath.
+--
+-- Rarities is a special case: color and the "????????" rarity's animated-text scrambler
+-- (`animate`/`_last`/`_cached`) can't survive being sent over the network or written to JSON
+-- at all (functions aren't serializable, and "Rainbow" is a sentinel string rather than a
+-- real Color for two tiers) - those stay hardcoded, cosmetic, code-level details. What IS
+-- exposed and genuinely admin-tunable in-game: each rarity's weight (drop odds), socket
+-- count, and all 7 stat multiplier ranges - the parts a server owner actually rebalances.
+if BCORE and BCORE.RegisterConfig then
+    local RarityCosmetics = {}
+    for name, data in pairs(BCORE.Inventory.config.Rarities) do
+        RarityCosmetics[name] = {
+            color = data.color,
+            animate = data.animate,
+        }
+    end
+
+    local STAT_KEYS = { "Damage", "Accuracy", "Recoil", "ClipSize", "Spread", "RPM", "Shots" }
+
+    local rarityFields = {
+        { key = "rarity", label = "Rarity", type = "string", default = "" },
+        { key = "weight", label = "Weight (drop odds)", type = "number", min = 0, decimals = 0, default = 1 },
+        { key = "sockets", label = "Sockets", type = "number", min = 0, max = 10, decimals = 0, default = 1 },
+    }
+    for _, stat in ipairs(STAT_KEYS) do
+        table.insert(rarityFields, { key = stat .. "Min", label = stat .. " Min", type = "number", decimals = 2, default = 1 })
+        table.insert(rarityFields, { key = stat .. "Max", label = stat .. " Max", type = "number", decimals = 2, default = 1 })
+    end
+
+    local defaultRarityRecords = {}
+    for name, data in pairs(BCORE.Inventory.config.Rarities) do
+        local rec = { rarity = name, weight = data.weight, sockets = data.sockets }
+        for _, stat in ipairs(STAT_KEYS) do
+            local m = data.multipliers[stat] or { min = 1, max = 1 }
+            rec[stat .. "Min"] = m.min
+            rec[stat .. "Max"] = m.max
+        end
+        defaultRarityRecords[#defaultRarityRecords + 1] = rec
+    end
+
+    BCORE:RegisterConfig("beep_inventory", "Rarities", {
+        label = "Rarities",
+        category = "Rarities",
+        description = "Weight, socket count, and stat multiplier ranges per rarity. Colors and special animated rarities aren't editable here.",
+        type = "records",
+        fields = rarityFields,
+        default = defaultRarityRecords,
+    })
+
+    BCORE:RegisterConfig("beep_inventory", "MaxSlots", {
+        label = "Max Inventory Slots", category = "General",
+        type = "number", min = 1, max = 1000, decimals = 0,
+        default = BCORE.Inventory.config.MaxSlots,
+    })
+    BCORE:RegisterConfig("beep_inventory", "SkinRollCost", {
+        label = "Skin Roll Cost", category = "Economy",
+        type = "number", min = 0, decimals = 0,
+        default = BCORE.Inventory.config.SkinRollCost,
+    })
+    BCORE:RegisterConfig("beep_inventory", "PricePerHpAndAp", {
+        label = "Price Per HP/AP (suit repair)", category = "Economy",
+        type = "number", min = 0, decimals = 0,
+        default = BCORE.Inventory.config.PricePerHpAndAp,
+    })
+    BCORE:RegisterConfig("beep_inventory", "Admins", {
+        label = "Inventory Admin Groups", category = "Access Control",
+        description = "Usergroups allowed to use the inventory admin panel (separate from the shared server-config admin gate).",
+        type = "list",
+        default = BCORE.Inventory.config.Admins,
+    })
+    BCORE:RegisterConfig("beep_inventory", "Skins", {
+        label = "Weapon Skins", category = "Skins",
+        type = "list",
+        default = BCORE.Inventory.Skins,
+    })
+
+    local colorFields, defaultColors = {}, {}
+    for key, col in pairs(BCORE.Inventory.colors) do
+        colorFields[#colorFields + 1] = { key = key, label = key }
+        defaultColors[key] = Color(col.r, col.g, col.b, col.a)
+    end
+    table.sort(colorFields, function(a, b) return a.key < b.key end)
+
+    BCORE:RegisterConfig("beep_inventory", "colors", {
+        label = "Inventory UI Colors", category = "Appearance",
+        type = "colors",
+        fields = colorFields,
+        default = defaultColors,
+    })
+
+    local function SyncInventoryConfigMirror()
+        local rarityRecords = BCORE:GetConfig("beep_inventory", "Rarities") or {}
+        local rebuilt = {}
+        for _, rec in ipairs(rarityRecords) do
+            local name = rec.rarity
+            if name and name ~= "" then
+                local cosmetics = RarityCosmetics[name] or {}
+                local multipliers = {}
+                for _, stat in ipairs(STAT_KEYS) do
+                    multipliers[stat] = { min = rec[stat .. "Min"] or 1, max = rec[stat .. "Max"] or 1 }
+                end
+                rebuilt[name] = {
+                    color = cosmetics.color or Color(255, 255, 255),
+                    weight = rec.weight or 1,
+                    sockets = rec.sockets or 1,
+                    multipliers = multipliers,
+                    animate = cosmetics.animate,
+                }
+            end
+        end
+        if next(rebuilt) then
+            BCORE.Inventory.config.Rarities = rebuilt
+        end
+
+        BCORE.Inventory.config.MaxSlots = BCORE:GetConfig("beep_inventory", "MaxSlots")
+        BCORE.Inventory.config.SkinRollCost = BCORE:GetConfig("beep_inventory", "SkinRollCost")
+        BCORE.Inventory.config.PricePerHpAndAp = BCORE:GetConfig("beep_inventory", "PricePerHpAndAp")
+
+        local admins = BCORE:GetConfig("beep_inventory", "Admins")
+        if admins and #admins > 0 then BCORE.Inventory.config.Admins = admins end
+
+        local skins = BCORE:GetConfig("beep_inventory", "Skins")
+        if skins and #skins > 0 then BCORE.Inventory.Skins = skins end
+
+        local colors = BCORE:GetConfig("beep_inventory", "colors")
+        if colors then
+            for key, col in pairs(colors) do
+                BCORE.Inventory.colors[key] = col
+            end
+        end
+    end
+
+    SyncInventoryConfigMirror()
+    hook.Add("BCORE.Config.Synced", "BCORE.Inventory.ConfigSynced", SyncInventoryConfigMirror)
+    hook.Add("BCORE.Config.ValueChanged", "BCORE.Inventory.ConfigChanged", function(addonId)
+        if addonId == "beep_inventory" then SyncInventoryConfigMirror() end
+    end)
+end
 
 
 //////////////////////////////////////////////////////////////////
